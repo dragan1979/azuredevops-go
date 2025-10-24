@@ -1,0 +1,28 @@
+{{- if .Values.goApp.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "my-full-app-chart.fullname" . }}-ingress
+  namespace: {{ .Values.namespace }} 
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.goApp.ingress.tls.issuer }}
+    nginx.ingress.kubernetes.io/ssl-redirect: "true" # Forces HTTP to HTTPS redirect
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - {{ .Values.goApp.ingress.host }}
+    secretName: {{ .Values.goApp.ingress.tls.secretName }} # Uses 'bigfirm-online-tls'
+  rules:
+  - host: {{ .Values.goApp.ingress.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-app-service
+            port:
+              number: 80          # Ingress talks to the Service on its external port (80)
+{{- end }}

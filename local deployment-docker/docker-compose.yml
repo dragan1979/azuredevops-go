@@ -1,0 +1,51 @@
+services:
+  # --- 1. Database Service ---
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password --bind-address=0.0.0.0
+    environment:
+      # These must match the credentials in your db.go file
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      # Expose the MySQL port to the host machine for optional external access
+      - "3306:3306"
+    volumes:
+    # Persist data so it survives container restarts/deletions
+      - mysql_data:/var/lib/mysql
+    # Mount the initialization script (init.sql) to create the 'users' table on first run
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 20s # Give MySQL time to initialize
+
+  # --- 2. Go Web Application Service ---
+  web:
+    build: 
+     dockerfile: Dockerfile
+     context: app                         # Look for the Dockerfile in the ./build directory
+    container_name: go_web_app
+    ports:
+      - "8080:8080"                   # Host:Container port mapping
+    depends_on:
+      db:
+        condition: service_healthy       
+                           # Ensure DB starts before the web app
+    environment:
+       DB_HOST: db 
+       DB_PORT: 3306
+       MYSQL_DATABASE: ${MYSQL_DATABASE}
+       MYSQL_USER: ${MYSQL_USER}
+       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+       GO_APP_PORT: 8080
+
+    
+volumes:
+  mysql_data:                          # Define the volume for persistent MySQL data

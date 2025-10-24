@@ -1,0 +1,17 @@
+services:
+  # --- 1. Go Web Application Service (Only this is built in CI) ---
+  web:
+    build: 
+      dockerfile: Dockerfile
+      context: app 
+    image: ${ACR_NAME}/devops-go-app:${BUILD_ID}
+    
+    environment:
+       DB_HOST: db 
+       DB_PORT: ${DB_PORT}
+       MYSQL_DATABASE: ${MYSQL_DATABASE}
+       MYSQL_USER: ${MYSQL_USER}
+       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+       GO_APP_PORT: ${GO_APP_PORT}
+
+       #tyty

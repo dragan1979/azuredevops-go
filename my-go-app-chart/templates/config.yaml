@@ -1,0 +1,32 @@
+# Combine config-map.yml and secrets.yml
+# 1. ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: {{ .Values.namespace }} 
+  labels:
+    {{- include "my-full-app-chart.labels" . | nindent 4 }}
+data:
+  MYSQL_DATABASE: {{ .Values.config.mysqlDatabase | quote }}
+  GO_APP_PORT: {{ .Values.config.go_app_port | quote }}
+  DB_HOST: {{ .Values.config.dbHost | quote }}
+  DB_PORT: {{ .Values.config.dbPort | quote }}
+
+---
+{{- if .Values.mysqlInitScript.enabled }}
+---
+# 3. Optional MySQL Init Script ConfigMap (if enabled)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.mysqlInitScript.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "my-full-app-chart.labels" . | nindent 4 }}
+data:
+{{- with .Values.mysqlInitScript.data }}
+  init.sql: |
+{{ . | nindent 4 }}
+{{- end }}
+{{- end }}

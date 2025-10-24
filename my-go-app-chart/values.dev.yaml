@@ -1,0 +1,102 @@
+# === Global Settings ===
+nameOverride: ""
+fullnameOverride: ""
+replicaCount: 1 # Used for both deployments
+
+namespace: "dev"
+
+# === Database (MySQL) Configuration ===
+mysql:
+  image:
+    repository: mysql
+    tag: "8.0"
+    pullPolicy: IfNotPresent
+  
+  # Resources
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "500m"
+  
+  # Service
+  service:
+    port: 3306
+    targetPort: 3306
+    type: ClusterIP
+
+# === Application (Go App) Configuration ===
+goApp:
+  image:
+    repository: myregstry2025.azurecr.io/myregstry2025/devops-go-app
+    tag: "IMAGE_TAG_PLACEHOLDER" 
+    # Use Always to force a pull of the new, unique tag
+    pullPolicy: Always
+
+  ingress:
+    enabled: true
+    host: dev.bigfirm.online
+    tls:
+      secretName: bigfirm-dev-tls
+      issuer: letsencrypt-prod
+
+    
+  
+  # Resources
+  resources:
+    limits:
+      memory: "256Mi"
+      cpu: "250m"
+    requests:
+      memory: "128Mi"
+      cpu: "250m"
+      
+  # Service
+  service:
+    port: 80
+    targetPort: 8080
+    type: LoadBalancer
+
+# === Configuration (ConfigMap & Secrets) ===
+config:
+
+  # ConfigMap values
+  mysqlDatabase: mydatabase
+  dbHost: mysql-service
+  dbPort: "3306"
+  go_app_port: "8080"
+
+  # We only store the *name* of the Secret, not its content (name is defined in secrets.yaml)
+  existingSecretName: app-config
+
+# === Persistence Configuration ===
+persistence:
+  # PV and PVC are generally managed separately or in a higher-level chart, 
+  # but for a local setup, we template them.
+  enabled: true
+  storageClassName: managed-premium
+  storageSize: 5Gi
+  claimName: mysql-pv-claim
+  
+
+# === Initialization Script ConfigMap ===
+# Assuming you will create a ConfigMap for mysql-init-script content
+mysqlInitScript:
+  enabled: true
+  name: mysql-init-script
+  data: |
+    USE mydatabase;
+    CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        username VARCHAR(255) NOT NULL UNIQUE,
+        email VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE -- Added 'is_active' column
+    );
+
+    -- Insert a few sample users for testing
+    INSERT INTO users (username, email, is_active) VALUES 
+    ('alice_tester', 'alice@example.com', TRUE),
+    ('bob_tester', 'bob@example.com', FALSE);

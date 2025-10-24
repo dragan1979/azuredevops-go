@@ -1,0 +1,171 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql  
+    spec:
+      containers:
+        - name: mysql-container
+          image: mysql:8.0
+          resources:
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
+            requests:
+              memory: "256Mi"
+              cpu: "500m"
+          startupProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - "mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD}"
+            initialDelaySeconds: 60 # Start checking after 5s
+            periodSeconds: 5       # Check every 5s
+            failureThreshold: 12   # Fail after 12 * 5s = 60s (Slightly longer than your 20s start_period + retries)
+
+          # 2. Readiness Probe (Checks if the service is ready to accept connections)
+          readinessProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - "mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD}"
+            periodSeconds: 5       # Equivalent to interval: 5s
+            timeoutSeconds: 10     # Equivalent to timeout: 10s
+            failureThreshold: 3    # How many times to fail before setting "Unready"
+
+          # 3. Liveness Probe (Checks if the application is running and healthy)
+          livenessProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - "mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD}"
+            periodSeconds: 10 # Check every 10s
+            timeoutSeconds: 5
+            failureThreshold: 3
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-config
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-config
+                  key: MYSQL_USER
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: MYSQL_DATABASE
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-config
+                  key: MYSQL_PASSWORD
+          ports:
+            - containerPort: 3306
+          volumeMounts:
+            # 1. Mount the persistent data volume (from PVC)
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
+            # 2. Mount the init script volume
+            - name: mysql-init-volume
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+              
+      volumes:
+        # 1. Persistent volume definition (for data)
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: mysql-pv-claim
+        # 2. ConfigMap volume definition (for init.sql)
+        - name: mysql-init-volume
+          configMap:
+            name: mysql-init-script # <-- References the ConfigMap
+          
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-app-deployment 
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-app 
+  template:
+    metadata: 
+      labels:
+        app: go-app
+    spec:
+      containers:
+        - name: app-container
+          image: golang-sample-app-web:latest
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet: 
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080  
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold:
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: MYSQL_DATABASE
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_PORT
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-config
+                  key: MYSQL_PASSWORD
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-config
+                  key: MYSQL_USER
+            - name: GO_APP_PORT
+              value: "8080"
+        
+

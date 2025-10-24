@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config 
+data:
+  # Application configuration settings. 
+  MYSQL_DATABASE: mydatabase
+  GO_APP_PORT: "8080"
+  DB_HOST: mysql-service
+  DB_PORT: "3306"

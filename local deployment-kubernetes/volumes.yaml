@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv-volume
+  labels:
+    type: local
+ 
+spec:
+  # The storage capacity of the volume.
+  capacity:
+    storage: 5Gi 
+  # Defines how the volume can be mounted (ReadWriteOnce is typical for a single database pod).
+  accessModes:
+    - ReadWriteOnce
+  # Specifies that this PV can only be bound to a PVC that explicitly requests this storage class name.
+  # The name 'manual' is arbitrary but common for hostPath setups.
+  storageClassName: manual 
+  # HostPath is used for local development/testing. 
+  # This path must exist on your host machine (Windows) and be accessible by the K8s node.
+  hostPath: 
+    path: "/mnt/c/k8s-data/mysql"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pv-claim
+spec:
+  # Must match the accessModes requested in the PV.
+  accessModes:
+    - ReadWriteOnce
+  # Must match the storageClassName in the PV for a specific binding.
+  storageClassName: manual 
+  # The minimum amount of storage requested by the application. Must be less than or equal to the PV capacity.
+  resources:
+    requests:
+      storage: 5Gi

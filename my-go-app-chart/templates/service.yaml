@@ -1,0 +1,39 @@
+# 1. MySQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.config.dbHost }} # Use DB_HOST for the service name
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: mysql
+    {{- include "my-full-app-chart.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: mysql
+  ports:
+    - protocol: TCP
+      port: {{ .Values.mysql.service.port }}
+      targetPort: {{ .Values.mysql.service.targetPort }}
+  type: {{ .Values.mysql.service.type }}
+
+---
+# 2. Go App Service
+apiVersion: v1
+kind: Service 
+metadata:
+  name: go-app-service
+  namespace: {{ .Values.namespace }}    
+  labels:
+    app: go-app
+    {{- include "my-full-app-chart.labels" . | nindent 4 }}
+spec:
+  selector:
+    app: go-app
+  ports:
+    - protocol: TCP
+      port: {{ .Values.goApp.service.port }}
+      targetPort: {{ .Values.goApp.service.targetPort }}
+      {{- if eq .Values.goApp.service.type "NodePort" }}
+      nodePort: {{ .Values.goApp.service.nodePort }}
+      {{- end }}
+  type: {{ .Values.goApp.service.type }}

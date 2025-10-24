@@ -1,0 +1,12 @@
+kubectl create configmap mysql-init-script --from-file=init.sql
+helm create my-go-app-chart --debug
+
+#check for errors in chart files and preview
+
+PS C:\Users\dravucan\golang-sample-app\local deployment-kubernetes> helm template my-chart my-go-app-chart
+
+helm install go-app-prod my-go-app-chart
+# go-app-prod: This is the release name.
+my-go-app-chart: This is the chart name (the directory path).
+
+helm status go-app-prod

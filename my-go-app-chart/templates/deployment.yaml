@@ -1,0 +1,163 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-deployment
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: mysql
+    {{- include "my-full-app-chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql  
+    spec:
+      volumes:
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.claimName }}
+        {{- if .Values.mysqlInitScript.enabled }}
+        - name: mysql-init-volume
+          configMap:
+            name: {{ .Values.mysqlInitScript.name }}
+        {{- end }}
+      containers:
+        - name: mysql-container
+          image: "{{ .Values.mysql.image.repository }}:{{ .Values.mysql.image.tag }}"
+          imagePullPolicy: {{ .Values.mysql.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.mysql.resources | nindent 12 }}
+          # Probes remain hardcoded as they are application-specific logic
+          startupProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - "mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD}"
+            initialDelaySeconds: 60
+            periodSeconds: 5
+            failureThreshold: 12
+          readinessProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - "mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD}"
+            periodSeconds: 5
+            timeoutSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+              - sh
+              - -c
+              - "mysqladmin ping -h 127.0.0.1 -u root -p${MYSQL_ROOT_PASSWORD}"
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-config
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-config
+                  key: MYSQL_USER
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: MYSQL_DATABASE
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-config
+                  key: MYSQL_PASSWORD
+          ports:
+            - containerPort: {{ .Values.mysql.service.targetPort }}
+          volumeMounts:
+            - name: mysql-persistent-storage
+              mountPath: /var/lib/mysql
+            {{- if .Values.mysqlInitScript.enabled }}
+            - name: mysql-init-volume
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+            {{- end }}
+
+---
+# 2. Go App Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-app-deployment 
+  labels:
+    app: go-app
+    {{- include "my-full-app-chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: go-app 
+  template:
+    metadata: 
+      labels:
+        app: go-app
+    spec:
+      containers:
+        - name: app-container
+          image: "{{ .Values.goApp.image.repository }}:{{ .Values.goApp.image.tag }}"
+          imagePullPolicy: {{ .Values.goApp.image.pullPolicy }}
+          resources:
+            {{- toYaml .Values.goApp.resources | nindent 12 }}
+          livenessProbe:
+            httpGet: 
+              path: /health
+              port: {{ .Values.goApp.service.targetPort }}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.goApp.service.targetPort }}  
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3 # Hardcoded from your original file's default Kubernetes behavior
+          ports:
+            - containerPort: {{ .Values.goApp.service.targetPort }}
+          env:
+            - name: MYSQL_DATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: MYSQL_DATABASE
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_PORT
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.config.existingSecretName }}
+                  key: MYSQL_PASSWORD
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: app-config
+                  key: MYSQL_USER
+            - name: GO_APP_PORT
+              value: {{ .Values.goApp.service.targetPort | quote }}
