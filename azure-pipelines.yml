@@ -125,7 +125,7 @@ stages:
           inputs:
             containerregistrytype: 'Azure Container Registry'
             azureSubscription: 'ManagedIdentityServiceConnection'
-            azureContainerRegistry: '{"loginServer":"$(ACR_NAME).azurecr.io", "id" : "/subscriptions/18f7d05d-daf0-44f3-8aef-7df0b1b4b98c/resourceGroups/terraform-resource-group/providers/Microsoft.ContainerRegistry/registries/$(ACR_NAME)"}'
+            azureContainerRegistry: '{"loginServer":"$(ACR_NAME).azurecr.io", "id" : "/subscriptions/1234555/resourceGroups/terraform-resource-group/providers/Microsoft.ContainerRegistry/registries/$(ACR_NAME)"}'
             dockerComposeFile: 'docker-compose.ci.yml'
             action: 'Build services'
             includeSourceTags: true
@@ -215,7 +215,7 @@ stages:
           inputs:
             containerregistrytype: 'Azure Container Registry'
             azureSubscription: 'ManagedIdentityServiceConnection'
-            azureContainerRegistry: '{"loginServer":"$(ACR_NAME).azurecr.io", "id" : "/subscriptions/18f7d05d-daf0-44f3-8aef-7df0b1b4b98c/resourceGroups/terraform-resource-group/providers/Microsoft.ContainerRegistry/registries/$(ACR_NAME)"}'
+            azureContainerRegistry: '{"loginServer":"$(ACR_NAME).azurecr.io", "id" : "/subscriptions/1232355/resourceGroups/terraform-resource-group/providers/Microsoft.ContainerRegistry/registries/$(ACR_NAME)"}'
             dockerComposeFile: 'docker-compose.ci.yml'
             action: 'Push services'
             includeSourceTags: true
