@@ -95,6 +95,7 @@ spec:
         - name: mysql-init-volume
           configMap:
             name: mysql-init-script # <-- References the ConfigMap
+        # create config map:kubectl create configmap mysql-init-script --from-file=init.sql
           
 ---
 apiVersion: apps/v1
